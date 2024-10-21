@@ -5,9 +5,11 @@ authors = ["Michael Avina <avinam@gmail.com>"]
 edition = "2021"
 license = "MIT/Apache-2.0"  # Choose an appropriate license
 description = "A crate for temporary, scope-bound, and thread-safe mutation of data in Rust."
-repository = "https://github.com/mavin2009/ghost-cell" 
+repository = "https://github.com/mavin2009/ghost-cell"
+homepage = "https://github.com/mavin2009/ghost-cell"
 keywords = ["ghost","temporary","revert"]
 categories = ["algorithms","data-structures"]
+readme = "readme.md"
 
 [dependencies]
 lazy_static = "1.4" 
