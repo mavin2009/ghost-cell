@@ -1,5 +1,5 @@
 use std::cell::UnsafeCell;
-use std::mem::ManuallyDrop;
+//use std::mem::ManuallyDrop;
 use std::ops::{Deref, DerefMut};
 
 /// A GhostCell allows temporary, scope-bound mutations to a value.  The underlying
