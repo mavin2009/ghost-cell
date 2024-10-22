@@ -2,25 +2,25 @@ use std::cell::UnsafeCell;
 //use std::mem::ManuallyDrop;
 use std::ops::{Deref, DerefMut};
 
-/// A GhostCell allows temporary, scope-bound mutations to a value.  The underlying
+/// A ScopeCell allows temporary, scope-bound mutations to a value.  The underlying
 /// data must implement `Copy` so that the original value can be efficiently stored
-/// and restored.  Changes made within the GhostCell's scope are reverted when the
-/// GhostCell is dropped.
-pub struct GhostCell<'a, T: Clone> {
+/// and restored.  Changes made within the ScopeCell's scope are reverted when the
+/// ScopeCell is dropped.
+pub struct ScopeCell<'a, T: Clone> {
     original_data: &'a T,
     modified_data: UnsafeCell<Option<T>>, // Holds temporary modified data
 }
 
-impl<'a, T: Clone> GhostCell<'a, T> {
-    // Create a new GhostCell from an immutable reference
+impl<'a, T: Clone> ScopeCell<'a, T> {
+    // Create a new ScopeCell from an immutable reference
     pub fn new(data: &'a T) -> Self {
-        GhostCell {
+        ScopeCell {
             original_data: data,
             modified_data: UnsafeCell::new(None),
         }
     }
 
-    // Consume the GhostCell and return the inner modified data if it exists, otherwise return the original data
+    // Consume the ScopeCell and return the inner modified data if it exists, otherwise return the original data
     pub fn into_inner(self) -> T {
         if let Some(modified) = unsafe { (*self.modified_data.get()).take() } {
             modified
@@ -58,11 +58,11 @@ impl<'a, T: Clone> GhostCell<'a, T> {
     }
 }
 
-pub struct GhostBorrow<'b, T: Clone> {
-    cell: &'b GhostCell<'b, T>,
+pub struct ScopeBorrow<'b, T: Clone> {
+    cell: &'b ScopeCell<'b, T>,
 }
 
-impl<'b, T: Clone> Deref for GhostBorrow<'b, T> {
+impl<'b, T: Clone> Deref for ScopeBorrow<'b, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -70,11 +70,11 @@ impl<'b, T: Clone> Deref for GhostBorrow<'b, T> {
     }
 }
 
-pub struct GhostBorrowMut<'b, T: Clone> {
-    cell: &'b mut GhostCell<'b, T>,
+pub struct ScopeBorrowMut<'b, T: Clone> {
+    cell: &'b mut ScopeCell<'b, T>,
 }
 
-impl<'b, T: Clone> Deref for GhostBorrowMut<'b, T> {
+impl<'b, T: Clone> Deref for ScopeBorrowMut<'b, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -82,14 +82,14 @@ impl<'b, T: Clone> Deref for GhostBorrowMut<'b, T> {
     }
 }
 
-impl<'b, T: Clone> DerefMut for GhostBorrowMut<'b, T> {
+impl<'b, T: Clone> DerefMut for ScopeBorrowMut<'b, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.cell.get_mut()
     }
 }
 
-// When the GhostCell is dropped, changes are discarded automatically.
-impl<'a, T: Clone> Drop for GhostCell<'a, T> {
+// When the ScopeCell is dropped, changes are discarded automatically.
+impl<'a, T: Clone> Drop for ScopeCell<'a, T> {
     fn drop(&mut self) {
         self.revert(); // Drop the modified data, reverting any changes.
     }
@@ -103,10 +103,10 @@ mod tests {
     fn test_basic_revert() {
         let data = 10;
         {
-            let mut ghost = GhostCell::new(&data);
-            *ghost.get_mut() = 20;
-            assert_eq!(*ghost.get(), 20);
-        } // GhostCell is dropped here, and data should revert
+            let mut scope = ScopeCell::new(&data);
+            *scope.get_mut() = 20;
+            assert_eq!(*scope.get(), 20);
+        } // ScopeCell is dropped here, and data should revert
         assert_eq!(data, 10); // Original value should be restored
     }
 
@@ -114,11 +114,11 @@ mod tests {
     fn test_revert_mid_scope() {
         let data = vec![1, 2, 3];
         {
-            let mut ghost = GhostCell::new(&data);
-            ghost.get_mut().push(4);
-            ghost.revert(); // Revert midway through mutation
-            assert_eq!(ghost.get().len(), 3); // Should revert to original length
-            ghost.get_mut().push(5);
+            let mut scope = ScopeCell::new(&data);
+            scope.get_mut().push(4);
+            scope.revert(); // Revert midway through mutation
+            assert_eq!(scope.get().len(), 3); // Should revert to original length
+            scope.get_mut().push(5);
         }
         assert_eq!(data, vec![1, 2, 3]); // Original data should not change
     }
@@ -128,9 +128,9 @@ mod tests {
         let data = vec![1, 2, 3];
         let inner;
         {
-            let mut ghost = GhostCell::new(&data);
-            ghost.get_mut().push(4); // Modify the data inside the GhostCell
-            inner = ghost.into_inner(); // Take ownership of the modified data
+            let mut scope = ScopeCell::new(&data);
+            scope.get_mut().push(4); // Modify the data inside the ScopeCell
+            inner = scope.into_inner(); // Take ownership of the modified data
         }
         assert_eq!(inner, vec![1, 2, 3, 4]); // The modified value should be `[1, 2, 3, 4]`
         assert_eq!(data, vec![1, 2, 3]); // Ensure the original data remains `[1, 2, 3]`
@@ -140,11 +140,11 @@ mod tests {
     fn test_multiple_reverts() {
         let data = vec![1, 2, 3];
         {
-            let mut ghost = GhostCell::new(&data);
-            ghost.get_mut().push(4);
-            ghost.revert(); // Revert first mutation
-            ghost.get_mut().push(5);
-            ghost.revert(); // Revert second mutation
+            let mut scope = ScopeCell::new(&data);
+            scope.get_mut().push(4);
+            scope.revert(); // Revert first mutation
+            scope.get_mut().push(5);
+            scope.revert(); // Revert second mutation
         }
         assert_eq!(data, vec![1, 2, 3]); // Original data should be restored
     }
@@ -153,9 +153,9 @@ mod tests {
     fn test_with_string_mutation() {
         let data = String::from("hello");
         {
-            let mut ghost = GhostCell::new(&data);
-            ghost.get_mut().push_str(" world");
-            assert_eq!(*ghost.get(), "hello world"); // Check the modified string
+            let mut scope = ScopeCell::new(&data);
+            scope.get_mut().push_str(" world");
+            assert_eq!(*scope.get(), "hello world"); // Check the modified string
         }
         assert_eq!(data, "hello"); // Original string should remain unchanged
     }
@@ -164,9 +164,9 @@ mod tests {
     fn test_with_copy_type() {
         let data = 10;
         {
-            let mut ghost = GhostCell::new(&data);
-            *ghost.get_mut() = 20;
-            assert_eq!(*ghost.get(), 20); // Mutated value
+            let mut Scope = ScopeCell::new(&data);
+            *Scope.get_mut() = 20;
+            assert_eq!(*Scope.get(), 20); // Mutated value
         }
         assert_eq!(data, 10); // Reverted to original value
     }
@@ -175,9 +175,9 @@ mod tests {
     fn test_with_needs_drop_type() {
         let data = vec![1, 2, 3];
         {
-            let mut ghost = GhostCell::new(&data);
-            ghost.get_mut().push(4);
-            assert_eq!(*ghost.get(), vec![1, 2, 3, 4]); // Mutated vector
+            let mut Scope = ScopeCell::new(&data);
+            Scope.get_mut().push(4);
+            assert_eq!(*Scope.get(), vec![1, 2, 3, 4]); // Mutated vector
         }
         assert_eq!(data, vec![1, 2, 3]); // Reverted to original vector
     }
@@ -186,8 +186,8 @@ mod tests {
     fn test_nested_borrows() {
         let data = vec![1, 2, 3];
         {
-            let mut ghost = GhostCell::new(&data);
-            let mut borrowed = ghost.get_mut();
+            let mut Scope = ScopeCell::new(&data);
+            let mut borrowed = Scope.get_mut();
             borrowed.push(4);
             assert_eq!(borrowed.len(), 4); // Ensure the borrow mutates
             borrowed.pop(); // Modify through the mutable borrow
@@ -196,16 +196,16 @@ mod tests {
     }
 
     #[test]
-    fn test_multiple_ghost_cells() {
+    fn test_multiple_scope_cells() {
         let data1 = vec![1, 2, 3];
         let data2 = vec![4, 5, 6];
 
         {
-            let mut ghost1 = GhostCell::new(&data1);
-            let mut ghost2 = GhostCell::new(&data2);
+            let mut scope1 = ScopeCell::new(&data1);
+            let mut scope2 = ScopeCell::new(&data2);
 
-            ghost1.get_mut().push(4);
-            ghost2.get_mut().push(7);
+            scope1.get_mut().push(4);
+            scope2.get_mut().push(7);
         }
         assert_eq!(data1, vec![1, 2, 3]); // Must revert
         assert_eq!(data2, vec![4, 5, 6]); // Must revert
@@ -215,10 +215,10 @@ mod tests {
     fn test_needs_drop_after_into_inner() {
         let data = vec![1, 2, 3];
         {
-            let ghost = GhostCell::new(&data);
-            let _inner = ghost.into_inner(); // Take ownership
+            let scope = ScopeCell::new(&data);
+            let _inner = scope.into_inner(); // Take ownership
         }
-        // Ensure original data is unaffected after the GhostCell is dropped
+        // Ensure original data is unaffected after the ScopeCell is dropped
         assert_eq!(data.len(), 3);
     }
 
@@ -226,7 +226,7 @@ mod tests {
     fn test_no_mutation_revert() {
         let data = vec![1, 2, 3];
         {
-            let ghost = GhostCell::new(&data);
+            let scope = ScopeCell::new(&data);
             // No mutation performed
         }
         assert_eq!(data, vec![1, 2, 3]); // Original data should remain unchanged
@@ -236,9 +236,9 @@ mod tests {
     fn test_multiple_borrow_same_scope() {
         let data = vec![1, 2, 3];
         {
-            let mut ghost = GhostCell::new(&data);
-            let borrowed1 = ghost.get();
-            let borrowed2 = ghost.get();
+            let mut scope = ScopeCell::new(&data);
+            let borrowed1 = scope.get();
+            let borrowed2 = scope.get();
             assert_eq!(borrowed1.len(), 3);
             assert_eq!(borrowed2.len(), 3);
         }
@@ -249,12 +249,12 @@ mod tests {
     fn test_mutation_after_revert() {
         let data = vec![1, 2, 3];
         {
-            let mut ghost = GhostCell::new(&data);
-            ghost.get_mut().push(4);
-            ghost.revert();
-            assert_eq!(ghost.get().len(), 3); // Reverted to original length
-            ghost.get_mut().push(5); // New mutation after revert
-            assert_eq!(ghost.get().len(), 4); // Should reflect the new mutation
+            let mut scope = ScopeCell::new(&data);
+            scope.get_mut().push(4);
+            scope.revert();
+            assert_eq!(scope.get().len(), 3); // Reverted to original length
+            scope.get_mut().push(5); // New mutation after revert
+            assert_eq!(scope.get().len(), 4); // Should reflect the new mutation
         }
         assert_eq!(data, vec![1, 2, 3]); // Original data should not change
     }
@@ -263,11 +263,11 @@ mod tests {
     fn test_borrow_and_mut_borrow() {
         let data = vec![1, 2, 3];
         {
-            let mut ghost = GhostCell::new(&data);
-            let borrowed = ghost.get(); // Immutable borrow
+            let mut scope = ScopeCell::new(&data);
+            let borrowed = scope.get(); // Immutable borrow
             assert_eq!(borrowed.len(), 3);
 
-            let mut borrowed_mut = ghost.get_mut(); // Mutable borrow
+            let mut borrowed_mut = scope.get_mut(); // Mutable borrow
             borrowed_mut.push(4);
             assert_eq!(borrowed_mut.len(), 4);
         }
@@ -275,17 +275,17 @@ mod tests {
     }
 
     #[test]
-    fn test_nested_ghost_cell() {
+    fn test_nested_scope_cell() {
         let data1 = vec![1, 2, 3];
         let data2 = vec![4, 5, 6];
         {
-            let mut outer_ghost = GhostCell::new(&data1);
-            let mut inner_ghost = GhostCell::new(&data2);
-            inner_ghost.get_mut().push(7);
-            outer_ghost.get_mut().push(4);
+            let mut outer_scope = ScopeCell::new(&data1);
+            let mut inner_scope = ScopeCell::new(&data2);
+            inner_scope.get_mut().push(7);
+            outer_scope.get_mut().push(4);
 
-            assert_eq!(inner_ghost.get(), &vec![4, 5, 6, 7]);
-            assert_eq!(outer_ghost.get(), &vec![1, 2, 3, 4]);
+            assert_eq!(inner_scope.get(), &vec![4, 5, 6, 7]);
+            assert_eq!(outer_scope.get(), &vec![1, 2, 3, 4]);
         }
         assert_eq!(data1, vec![1, 2, 3]); // Must revert
         assert_eq!(data2, vec![4, 5, 6]); // Must revert

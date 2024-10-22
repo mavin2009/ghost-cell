@@ -1,6 +1,6 @@
-# ghost-cell: Temporary, Scope-Bound, Reverting Mutations in Rust
+# Scope-cell: Temporary, Scope-Bound, Reverting Mutations in Rust
 
-`ghost-cell` provides a mechanism for temporary, scope-bound mutability of immutable data in Rust. It allows for non-permanent changes within a defined scope while ensuring the original data remains unaffected. This is useful in scenarios where you need temporary mutation without ownership or long-term modification of the underlying data.
+`Scope-cell` provides a mechanism for temporary, scope-bound mutability of immutable data in Rust. It allows for non-permanent changes within a defined scope while ensuring the original data remains unaffected. This is useful in scenarios where you need temporary mutation without ownership or long-term modification of the underlying data.
 
 Key features include:
 
@@ -21,7 +21,7 @@ Key features include:
 
 ## Use Cases
 
-`ghost-cell` is useful in scenarios where you need to temporarily mutate immutable data without affecting the original state:
+`Scope-cell` is useful in scenarios where you need to temporarily mutate immutable data without affecting the original state:
 
 * **Simulation**: Simulate temporary changes to immutable data and automatically roll back.
 * **Transactional systems**: Experiment with temporary changes before committing.
@@ -31,21 +31,21 @@ Key features include:
 ## Example Usage
 
 ```rust
-use ghost_cell::GhostCell;
+use Scope_cell::ScopeCell;
 
 fn main() {
     let immutable_data = vec![1, 2, 3];
     {
-        let mut ghost = GhostCell::new(&immutable_data);
-        ghost.get_mut().push(4); // Temporarily mutate the data
-        assert_eq!(ghost.get().len(), 4); // Verify the change within the scope
+        let mut Scope = ScopeCell::new(&immutable_data);
+        Scope.get_mut().push(4); // Temporarily mutate the data
+        assert_eq!(Scope.get().len(), 4); // Verify the change within the scope
     } // Changes revert here
     assert_eq!(immutable_data.len(), 3); // The original data remains unchanged
 }
 
 ## How it Works
 
-GhostCell operates by storing a reference to the original data and optionally cloning it into a temporary mutable version. When the GhostCell is dropped, any changes made are discarded, and the original data remains unaffected.
+ScopeCell operates by storing a reference to the original data and optionally cloning it into a temporary mutable version. When the ScopeCell is dropped, any changes made are discarded, and the original data remains unaffected.
 
 Key methods:
 * **get()** - Borrow the data (either original or modified).
@@ -54,11 +54,11 @@ Key methods:
 
 ## Installation
 
-To use ghost-cell add the following to your Cargo.toml
+To use Scope-cell add the following to your Cargo.toml
 
 ```toml
 [dependencies]
-ghost-cell = "0.1.0"
+Scope-cell = "0.1.0"
 
 ## License
 This project is licensed under the MIT License.
