@@ -58,7 +58,7 @@ To use Scope-cell add the following to your Cargo.toml
 
 ```toml
 [dependencies]
-Scope-cell = "0.1.0"
+scope-cell = "0.1.0"
 
 ## License
 This project is licensed under the MIT License.
