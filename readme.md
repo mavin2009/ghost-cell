@@ -36,9 +36,9 @@ use Scope_cell::ScopeCell;
 fn main() {
     let immutable_data = vec![1, 2, 3];
     {
-        let mut Scope = ScopeCell::new(&immutable_data);
-        Scope.get_mut().push(4); // Temporarily mutate the data
-        assert_eq!(Scope.get().len(), 4); // Verify the change within the scope
+        let mut scope = ScopeCell::new(&immutable_data);
+        scope.get_mut().push(4); // Temporarily mutate the data
+        assert_eq!(scope.get().len(), 4); // Verify the change within the scope
     } // Changes revert here
     assert_eq!(immutable_data.len(), 3); // The original data remains unchanged
 }
@@ -58,7 +58,7 @@ To use Scope-cell add the following to your Cargo.toml
 
 ```toml
 [dependencies]
-scope-cell = "0.1.0"
+scope-cell = "0.1.2"
 
 ## License
 This project is licensed under the MIT License.
